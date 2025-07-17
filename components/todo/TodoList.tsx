@@ -1,7 +1,7 @@
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { X, PencilSimple, Check, Smiley, Clock } from "@phosphor-icons/react";
+import { X, PencilSimple, Check, Smiley, Clock, Calendar } from "@phosphor-icons/react";
 import { CircleCheckbox } from "./CircleCheckbox";
 import { TodoListProps } from "@/types";
 import { useRef, useCallback, useState, useEffect } from "react";
@@ -17,6 +17,7 @@ import {
   EmojiPickerSearch,
 } from "@/components/ui/emoji-picker";
 import { TimePicker, formatTimeDisplay } from "./TimePicker";
+import { formatDate } from "@/lib/utils/todo";
 
 export function TodoList({
   todos,
@@ -241,6 +242,10 @@ export function TodoList({
                       <span>{formatTimeDisplay(todo.time)}</span>
                     </div>
                   )}
+                  <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
+                    <Calendar className="w-3 h-3" weight="fill" />
+                    <span>{formatDate(todo.date)}</span>
+                  </div>
                 </div>
               </div>
               <Button

@@ -5,8 +5,9 @@ import { z } from "zod";
 import { vif } from "@/lib/models";
 import { elevenlabs } from '@ai-sdk/elevenlabs';
 import { DetermineActionFn } from "@/types/actions";
+import { processBatchTasks } from "@/lib/utils/batch-tasks";
 
-export const determineAction: DetermineActionFn = async (text, emoji, todos, model = "vif-default", timezone = "UTC") => {
+export const determineAction: DetermineActionFn = async (text, emoji, todos, model = "vif-default", timezone = "UTC", dateRange?: { startDate: Date; endDate: Date }) => {
     console.log("Determining action...");
     console.log(text, emoji, todos);
     console.log("Model:", model);
@@ -77,6 +78,34 @@ export const determineAction: DetermineActionFn = async (text, emoji, todos, mod
         For specific days like "monday", "tuesday", etc., use the next occurrence of that day.
         Always return dates in YYYY-MM-DD format.
 
+        NEW: The user can also create batch recurring tasks with patterns like:
+        - "every day this week do exercise" -> Create 7 tasks for each day of this week with the same task
+        - "monday wednesday friday do yoga" -> Create 3 tasks for Monday, Wednesday, Friday of this week
+        - "end of month do summary" -> Create a task for the last day of current month
+        - "mon wed fri do meditation" -> Create 3 tasks for Monday, Wednesday, Friday of this week
+        - "daily reading" -> Create 7 tasks for each day of this week
+        - "tue thu sat do workout" -> Create 3 tasks for Tuesday, Thursday, Saturday of this week
+        - "monday wednesday friday exercise" -> Create 3 tasks for Monday, Wednesday, Friday of this week
+        - "tuesday thursday yoga" -> Create 2 tasks for Tuesday, Thursday of this week
+        
+        For batch recurring tasks, return multiple "add" actions with different targetDate values.
+        Calculate the correct dates based on the current week and the specified days.
+        For "end of month", calculate the last day of the current month.
+        For "every day" or "daily", create tasks for all 7 days of the current week (Monday to Sunday).
+        
+        When you see patterns like "monday wednesday friday", "tuesday thursday saturday", etc., extract the task text and create separate actions for each specified day.
+        The task text should be the part after the time specification (e.g., "do exercise", "do yoga", "do meditation").
+
+        The user can also specify date ranges in their commands:
+        - "show me tasks from last week" -> action: "filter", startDate: "YYYY-MM-DD", endDate: "YYYY-MM-DD"
+        - "what do I have this week?" -> action: "filter", startDate: "YYYY-MM-DD", endDate: "YYYY-MM-DD"
+        - "show all todos from monday to friday" -> action: "filter", startDate: "YYYY-MM-DD", endDate: "YYYY-MM-DD"
+        - "display tasks from march 1 to march 15" -> action: "filter", startDate: "YYYY-MM-DD", endDate: "YYYY-MM-DD"
+        - "show me everything from yesterday to tomorrow" -> action: "filter", startDate: "YYYY-MM-DD", endDate: "YYYY-MM-DD"
+        
+        When the user asks for date range filtering, use the "filter" action with startDate and endDate.
+        ${dateRange ? `Current date range: ${dateRange.startDate.toISOString().split('T')[0]} to ${dateRange.endDate.toISOString().split('T')[0]}` : ""}
+
         The user can specify time in their commands in various natural ways:
         Examples with time:
         - "meeting with John at 3pm tomorrow" -> text: "meeting with John", time: "15:00", targetDate: ${tomorrowStr}
@@ -105,13 +134,14 @@ ${todos ? `<todo_list>
 ${todos?.map(todo => `- ${todo.id}: ${todo.text} (${todo.emoji})`).join("\n")}
 </todo_list>` : ""}
 
-        The action should be one of the following: ${["add", "delete", "mark", "sort", "edit", "clear"].join(", ")}
+        The action should be one of the following: ${["add", "delete", "mark", "sort", "edit", "clear", "filter"].join(", ")}
         - If the action is "add", the text, emoji, and targetDate should be included.
         - If the action is "delete", the todoId should be included.
         - If the action is "mark", the todoId should be included and the status should be "complete" or "incomplete".
         - If the action is "sort", the sortBy should be included.
         - If the action is "edit", both the todoId (to identify the todo to edit) and the text (the new content) should be included.
         - If the action is "clear", the user wants to clear the list of todos with the given listToClear(all, completed, incomplete).
+        - If the action is "filter", the user wants to filter todos by date range with startDate and endDate.
         
         For the add action, the text should be in the future tense. like "buy groceries", "make a post with @theo", "go for violin lesson"
         ${emoji ? `Change the emoji to a more appropriate based on the text. The current emoji is: ${emoji}` : ""}
@@ -145,6 +175,21 @@ ${todos?.map(todo => `- ${todo.id}: ${todo.text} (${todo.emoji})`).join("\n")}
     `;
 
     console.log("prompt", prompt);
+    
+    // 检查是否为批量任务
+    const batchResult = processBatchTasks(text, emoji);
+    if (batchResult) {
+      console.log("Batch tasks detected:", batchResult);
+      return {
+        actions: batchResult.tasks.map(task => ({
+          action: "add" as const,
+          text: task.text,
+          emoji: task.emoji,
+          targetDate: task.date
+        }))
+      };
+    }
+    
     const startTime = Date.now();
     const { object: action, usage } = await generateObject({
         model: vif.languageModel(model),
@@ -156,7 +201,7 @@ ${todos?.map(todo => `- ${todo.id}: ${todo.text} (${todo.emoji})`).join("\n")}
         },
         schema: z.object({
             actions: z.array(z.object({
-                action: z.enum(["add", "delete", "mark", "sort", "edit", "clear",]).describe("The action to take"),
+                action: z.enum(["add", "delete", "mark", "sort", "edit", "clear", "filter"]).describe("The action to take"),
                 text: z.string().describe("The text of the todo item.").optional(),
                 todoId: z.string().describe("The id of the todo item to act upon").optional(),
                 emoji: z.string().describe("The emoji of the todo item").optional(),
@@ -167,6 +212,8 @@ ${todos?.map(todo => `- ${todo.id}: ${todo.text} (${todo.emoji})`).join("\n")}
                 ).describe("The sort order").optional(),
                 status: z.enum(["complete", "incomplete"]).describe("The status of the todo item. to be used for the mark action").optional(),
                 listToClear: z.enum(["all", "completed", "incomplete"]).describe("The list to clear").optional(),
+                startDate: z.string().describe("The start date for filtering in YYYY-MM-DD format").optional(),
+                endDate: z.string().describe("The end date for filtering in YYYY-MM-DD format").optional(),
             })),
         }),
         prompt,

@@ -4,9 +4,10 @@ import { xai } from "@ai-sdk/xai";
 import { openai, createOpenAI } from "@ai-sdk/openai";
 import { customProvider } from "ai";
 
-const fireworks = createOpenAI({
-  apiKey: process.env.HF_TOKEN,
-  baseURL: "https://router.huggingface.co/fireworks-ai/inference/v1",
+// DeepSeek API 配置
+const deepseek = createOpenAI({
+  apiKey: process.env.DEEPSEEK_API_KEY,
+  baseURL: "https://api.deepseek.com",
 });
 
 export const vif = customProvider({
@@ -15,7 +16,7 @@ export const vif = customProvider({
     "vif-default": xai("grok-3-mini-fast"),
     "vif-qwen": groq("qwen-qwq-32b"),
     "vif-openai": openai("gpt-4.1-nano"),
-    "vif-r1": fireworks("accounts/fireworks/models/deepseek-r1-0528"),
+    "vif-r1": deepseek("deepseek-chat"),
   },
 });
 
