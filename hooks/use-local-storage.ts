@@ -20,7 +20,7 @@ export function useLocalStorage<T>(key: string, initialValue: T) {
       if (!item) return;
 
       const parsed = JSON.parse(item, (key, value) => {
-        if (key === "date") return new Date(value);
+        if (key === "date" || key === "startDate" || key === "endDate") return new Date(value);
         return value;
       });
 

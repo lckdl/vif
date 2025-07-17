@@ -37,6 +37,22 @@ export const filterTodosByDate = (todos: TodoItem[], selectedDate: Date) => {
   );
 };
 
+// Filter todos by date range
+export const filterTodosByDateRange = (todos: TodoItem[], startDate: Date, endDate: Date) => {
+  return todos.filter((todo) => {
+    const todoDate = new Date(todo.date);
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    
+    // Reset time to start of day for comparison
+    todoDate.setHours(0, 0, 0, 0);
+    start.setHours(0, 0, 0, 0);
+    end.setHours(23, 59, 59, 999);
+    
+    return todoDate >= start && todoDate <= end;
+  });
+};
+
 // Sort todos by criteria
 export const sortTodos = (todos: TodoItem[], sortBy: string) => {
   return [...todos].sort((a, b) => {

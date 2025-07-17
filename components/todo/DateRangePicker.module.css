@@ -1,0 +1,135 @@
+/* 覆盖react-date-range的默认样式 */
+.dateRangeContainer {
+    --rdr-color-primary: hsl(var(--primary));
+    --rdr-color-primary-light: hsl(var(--primary) / 0.1);
+    --rdr-color-primary-dark: hsl(var(--primary) / 0.8);
+    --rdr-color-text: hsl(var(--foreground));
+    --rdr-color-text-secondary: hsl(var(--muted-foreground));
+    --rdr-color-background: hsl(var(--background));
+    --rdr-color-border: hsl(var(--border));
+  }
+  
+  .dateRangeContainer :global(.rdrCalendarWrapper) {
+    background: var(--rdr-color-background) !important;
+    border: 1px solid var(--rdr-color-border) !important;
+    border-radius: 0.75rem !important;
+    font-family: inherit !important;
+  }
+  
+  .dateRangeContainer :global(.rdrMonth) {
+    background: var(--rdr-color-background) !important;
+  }
+  
+  .dateRangeContainer :global(.rdrMonthAndYearWrapper) {
+    background: var(--rdr-color-background) !important;
+    border-bottom: 1px solid var(--rdr-color-border) !important;
+    padding: 1rem !important;
+  }
+  
+  .dateRangeContainer :global(.rdrMonthAndYearPickers) {
+    color: var(--rdr-color-text) !important;
+  }
+  
+  .dateRangeContainer :global(.rdrMonthPicker),
+  .dateRangeContainer :global(.rdrYearPicker) {
+    background: var(--rdr-color-background) !important;
+    border: 1px solid var(--rdr-color-border) !important;
+    border-radius: 0.5rem !important;
+    color: var(--rdr-color-text) !important;
+    padding: 0.5rem !important;
+  }
+  
+  .dateRangeContainer :global(.rdrMonthPicker:hover),
+  .dateRangeContainer :global(.rdrYearPicker:hover) {
+    background: hsl(var(--muted)) !important;
+  }
+  
+  .dateRangeContainer :global(.rdrWeekDays) {
+    background: var(--rdr-color-background) !important;
+    border-bottom: 1px solid var(--rdr-color-border) !important;
+  }
+  
+  .dateRangeContainer :global(.rdrWeekDay) {
+    color: var(--rdr-color-text-secondary) !important;
+    font-weight: 500 !important;
+    font-size: 0.875rem !important;
+  }
+  
+  .dateRangeContainer :global(.rdrDays) {
+    background: var(--rdr-color-background) !important;
+    padding: 0.5rem !important;
+  }
+  
+  .dateRangeContainer :global(.rdrDay) {
+    background: var(--rdr-color-background) !important;
+    color: var(--rdr-color-text) !important;
+    border-radius: 0.5rem !important;
+    font-size: 0.875rem !important;
+    transition: all 0.2s ease !important;
+  }
+  
+  .dateRangeContainer :global(.rdrDay:hover) {
+    background: hsl(var(--muted)) !important;
+  }
+  
+  .dateRangeContainer :global(.rdrDayToday) {
+    background: var(--rdr-color-primary-light) !important;
+    color: var(--rdr-color-primary) !important;
+    font-weight: 600 !important;
+  }
+  
+  .dateRangeContainer :global(.rdrDayStartOfMonth),
+  .dateRangeContainer :global(.rdrDayEndOfMonth) {
+    background: var(--rdr-color-background) !important;
+    color: var(--rdr-color-text-secondary) !important;
+  }
+  
+  .dateRangeContainer :global(.rdrDayStartOfWeek),
+  .dateRangeContainer :global(.rdrDayEndOfWeek) {
+    background: var(--rdr-color-background) !important;
+  }
+  
+  .dateRangeContainer :global(.rdrDayInRange) {
+    background: var(--rdr-color-primary-light) !important;
+    color: var(--rdr-color-primary-dark) !important;
+  }
+  
+  .dateRangeContainer :global(.rdrDayStartOfRange),
+  .dateRangeContainer :global(.rdrDayEndOfRange) {
+    background: var(--rdr-color-primary) !important;
+    color: white !important;
+    font-weight: 600 !important;
+  }
+  
+  .dateRangeContainer :global(.rdrDayStartOfRange:hover),
+  .dateRangeContainer :global(.rdrDayEndOfRange:hover) {
+    background: var(--rdr-color-primary-dark) !important;
+  }
+  
+  .dateRangeContainer :global(.rdrDayDisabled) {
+    background: var(--rdr-color-background) !important;
+    color: var(--rdr-color-text-secondary) !important;
+    opacity: 0.4 !important;
+  }
+  
+  .dateRangeContainer :global(.rdrDayPassive) {
+    color: var(--rdr-color-text-secondary) !important;
+    opacity: 0.6 !important;
+  }
+  
+  .dateRangeContainer :global(.rdrNextPrevButton) {
+    background: var(--rdr-color-background) !important;
+    border: 1px solid var(--rdr-color-border) !important;
+    border-radius: 0.5rem !important;
+    color: var(--rdr-color-text) !important;
+    transition: all 0.2s ease !important;
+  }
+  
+  .dateRangeContainer :global(.rdrNextPrevButton:hover) {
+    background: hsl(var(--muted)) !important;
+  }
+  
+  .dateRangeContainer :global(.rdrPprevButton i),
+  .dateRangeContainer :global(.rdrNextButton i) {
+    border-color: var(--rdr-color-text) !important;
+  } 

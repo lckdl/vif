@@ -4,7 +4,6 @@ import { useState, useEffect, Suspense, useRef } from "react";
 import { format } from "date-fns";
 import {
   List,
-  CaretDown,
   Smiley,
   Check,
   X,
@@ -13,7 +12,7 @@ import {
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Calendar } from "@/components/ui/calendar";
+
 import { cn } from "@/lib/utils";
 import {
   EmojiPicker,
@@ -59,13 +58,13 @@ import { useSpeechRecognition } from "@/hooks/use-speech-recognition";
 import { determineAction } from "@/app/actions";
 import { TodoItem, SortOption } from "@/types";
 import {
-  filterTodosByDate,
+  filterTodosByDateRange,
   sortTodos,
   calculateProgress,
-  formatDate,
   serializeTodo,
 } from "@/lib/utils/todo";
 import { Model } from "@/lib/models";
+import { DateRangePicker } from "./DateRangePicker";
 
 // custom components
 import { CircularProgress } from "./CircularProgress";
@@ -151,7 +150,15 @@ export default function Todo() {
   const [isClientLoaded, setIsClientLoaded] = useState(false);
   const [todos, setTodos] = useLocalStorage<TodoItem[]>("todos", []);
   const [newTodo, setNewTodo] = useState("");
-  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [dateRange, setDateRange] = useLocalStorage<{
+    startDate: Date;
+    endDate: Date;
+    key: string;
+  }>("dateRange", {
+    startDate: new Date(),
+    endDate: new Date(),
+    key: "selection"
+  });
   const [selectedEmoji, setSelectedEmoji] = useState<string>("😊");
   const [selectedModel, setSelectedModel] = useLocalStorage<Model>(
     "selectedModel",
@@ -231,7 +238,7 @@ export default function Todo() {
 
   // Only process todos after client-side hydration
   const filteredTodos = isClientLoaded
-    ? filterTodosByDate(todos, selectedDate)
+    ? filterTodosByDateRange(todos, dateRange.startDate, dateRange.endDate)
     : [];
   const sortedTodos = isClientLoaded ? sortTodos(filteredTodos, sortBy) : [];
 
@@ -261,13 +268,14 @@ export default function Todo() {
           selectedEmoji || "",
           filteredTodos,
           selectedModel,
-          timezone
+          timezone,
+          dateRange
         )
       ).actions;
       actions.forEach((action) => {
         switch (action.action) {
           case "add":
-            let todoDate = selectedDate;
+            let todoDate = dateRange.startDate;
             if (action.targetDate) {
               todoDate = new Date(action.targetDate);
             }
@@ -347,36 +355,41 @@ export default function Todo() {
             if (action.listToClear) {
               switch (action.listToClear) {
                 case "all":
-                  // Clear all todos for the selected date
+                  // Clear all todos for the selected date range
                   newTodos = todos.filter(
-                    (todo) =>
-                      format(todo.date, "yyyy-MM-dd") !==
-                      format(selectedDate, "yyyy-MM-dd")
+                    (todo) => !filterTodosByDateRange([todo], dateRange.startDate, dateRange.endDate).length
                   );
                   break;
                 case "completed":
-                  // Clear completed todos for the selected date
+                  // Clear completed todos for the selected date range
                   newTodos = todos.filter(
-                    (todo) =>
-                      !(
-                        todo.completed &&
-                        format(todo.date, "yyyy-MM-dd") ===
-                          format(selectedDate, "yyyy-MM-dd")
-                      )
+                    (todo) => !(
+                      todo.completed &&
+                      filterTodosByDateRange([todo], dateRange.startDate, dateRange.endDate).length
+                    )
                   );
                   break;
                 case "incomplete":
-                  // Clear incomplete todos for the selected date
+                  // Clear incomplete todos for the selected date range
                   newTodos = todos.filter(
-                    (todo) =>
-                      !(
-                        !todo.completed &&
-                        format(todo.date, "yyyy-MM-dd") ===
-                          format(selectedDate, "yyyy-MM-dd")
-                      )
+                    (todo) => !(
+                      !todo.completed &&
+                      filterTodosByDateRange([todo], dateRange.startDate, dateRange.endDate).length
+                    )
                   );
                   break;
               }
+            }
+            break;
+
+          case "filter":
+            if (action.startDate && action.endDate) {
+              // Set the date range
+              setDateRange({
+                startDate: new Date(action.startDate),
+                endDate: new Date(action.endDate),
+                key: "selection"
+              });
             }
             break;
         }
@@ -392,7 +405,7 @@ export default function Todo() {
           text,
           completed: false,
           emoji: selectedEmoji,
-          date: selectedDate,
+          date: dateRange.startDate,
         }),
       ]);
     } finally {
@@ -452,8 +465,7 @@ export default function Todo() {
   const clearAllTodos = () => {
     setTodos(
       todos.filter(
-        (todo) =>
-          format(todo.date, "yyyy-MM-dd") !== format(selectedDate, "yyyy-MM-dd")
+        (todo) => !filterTodosByDateRange([todo], dateRange.startDate, dateRange.endDate).length
       )
     );
   };
@@ -461,12 +473,10 @@ export default function Todo() {
   const clearCompletedTodos = () => {
     setTodos(
       todos.filter(
-        (todo) =>
-          !(
-            todo.completed &&
-            format(todo.date, "yyyy-MM-dd") ===
-              format(selectedDate, "yyyy-MM-dd")
-          )
+        (todo) => !(
+          todo.completed &&
+          filterTodosByDateRange([todo], dateRange.startDate, dateRange.endDate).length
+        )
       )
     );
   };
@@ -474,12 +484,10 @@ export default function Todo() {
   const clearIncompleteTodos = () => {
     setTodos(
       todos.filter(
-        (todo) =>
-          !(
-            !todo.completed &&
-            format(todo.date, "yyyy-MM-dd") ===
-              format(selectedDate, "yyyy-MM-dd")
-          )
+        (todo) => !(
+          !todo.completed &&
+          filterTodosByDateRange([todo], dateRange.startDate, dateRange.endDate).length
+        )
       )
     );
   };
@@ -509,29 +517,12 @@ export default function Todo() {
     <div className="max-w-md w-full mx-auto p-4 space-y-4 pb-24 flex flex-col">
       <div className="space-y-1">
         <div className="flex items-center justify-between">
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                variant="ghost"
-                className="!p-1 font-semibold text-2xl hover:no-underline flex items-center gap-1"
-              >
-                {formatDate(selectedDate)}
-                <CaretDown className="w-4 h-4 text-muted-foreground" />
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-              <Calendar
-                mode="single"
-                selected={selectedDate}
-                onSelect={(date) => {
-                  if (date) {
-                    setSelectedDate(date);
-                  }
-                }}
-                initialFocus
-              />
-            </PopoverContent>
-          </Popover>
+          <DateRangePicker
+            dateRange={dateRange}
+            onDateRangeChange={({ startDate, endDate }) => {
+              setDateRange({ startDate, endDate, key: "selection" });
+            }}
+          />
           <CircularProgress progress={progress} />
         </div>
         <div className="!ml-1.5 text-sm text-muted-foreground flex items-center gap-1">
@@ -554,7 +545,7 @@ export default function Todo() {
           ) : sortedTodos.length === 0 && isLoading ? (
             <LoadingState />
           ) : sortedTodos.length === 0 && !isLoading ? (
-            <EmptyState selectedDate={selectedDate} focusInput={focusInput} />
+            <EmptyState selectedDate={dateRange.startDate} focusInput={focusInput} />
           ) : (
             <TodoList
               todos={sortedTodos}
