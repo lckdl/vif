@@ -131,7 +131,7 @@ export const determineAction: DetermineActionFn = async (text, emoji, todos, mod
         Keep emojis relevant to both the task and time (e.g., ⏰, 🕐, or 📅 for time-sensitive tasks).
 
 ${todos ? `<todo_list>
-${todos?.map(todo => `- ${todo.id}: ${todo.text} (${todo.emoji})`).join("\n")}
+${todos?.map(todo => `- ${todo.id}: ${todo.text} (${todo.emoji}) - Date: ${todo.date.toISOString().split('T')[0]}`).join("\n")}
 </todo_list>` : ""}
 
         The action should be one of the following: ${["add", "delete", "mark", "sort", "edit", "clear", "filter"].join(", ")}
@@ -152,8 +152,47 @@ ${todos?.map(todo => `- ${todo.id}: ${todo.text} (${todo.emoji})`).join("\n")}
         The todo list is very important to understand the user's intent.
         
         IMPORTANT: You must always use the todo's ID for the actions delete, mark, and edit. Do not use the text to identify todos.
-        Example: "todo id: '123abc', todo text: 'buy groceries', user request: 'bought groceries', action: 'mark', todoId: '123abc', status: 'complete'"
-        Example: "todo id: '456def', todo text: 'make a post with @theo', user request: 'i made a post with @theo', action: 'mark', todoId: '456def', status: 'complete'"
+        
+        CRITICAL: When marking tasks as complete, you must match by BOTH text content AND date. If the user says "today [task] completed", only mark the task that matches both the text AND is scheduled for today (${todayStr}). Do NOT mark all tasks with similar text across different dates.
+        
+        IMPORTANT: For batch completion requests like this week's [task] completed, you should mark ALL tasks with that text that fall within the current week. Return multiple "mark" actions for each matching task.
+        
+        For recurring tasks (like daily pushups), when the user says "today [task] completed", only mark the task for today's date. Do NOT mark tasks for other days even if they have the same text.
+        
+        Examples of correct behavior:
+        - User has "do pushups" tasks for Monday, Tuesday, Wednesday, Thursday, Friday
+        - User says "today pushups completed" on Tuesday
+        - Only mark the Tuesday pushups task as complete
+        - Do NOT mark Monday, Wednesday, Thursday, or Friday pushups tasks
+        
+        Batch completion examples:
+        - User has "do pushups" tasks for Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday
+        - User says this week's pushups completed
+        - Mark ALL pushups tasks for the current week as complete
+        - Return multiple "mark" actions, one for each task ID
+        
+        When matching tasks for completion:
+        1. First, identify the task text from the user's request
+        2. For "today" requests: find the task with that text that is scheduled for today (${todayStr})
+        3. For "this week" requests: find ALL tasks with that text that fall within the current week
+        4. Only mark the matching task(s) as complete
+        5. If no task matches the criteria, do not take any action
+        
+        Example: "todo id: '123abc', todo text: 'buy groceries', date: '${todayStr}', user request: 'bought groceries today', action: 'mark', todoId: '123abc', status: 'complete'"
+        Example: "todo id: '456def', todo text: 'make a post with @theo', date: '${todayStr}', user request: 'i made a post with @theo today', action: 'mark', todoId: '456def', status: 'complete'"
+        Example: "todo id: '789ghi', todo text: 'do pushups', date: '${todayStr}', user request: 'today pushups completed', action: 'mark', todoId: '789ghi', status: 'complete'"
+        Example: "todo id: '012jkl', todo text: 'do pushups', date: '${tomorrowStr}', user request: 'today pushups completed', action: 'mark' - NO ACTION, because the pushups task is for tomorrow, not today"
+        
+        Batch completion examples:
+        Example: "user request: '本周的俯卧撑完成了', actions: [
+          {action: 'mark', todoId: 'abc123', status: 'complete'},
+          {action: 'mark', todoId: 'def456', status: 'complete'},
+          {action: 'mark', todoId: 'ghi789', status: 'complete'},
+          {action: 'mark', todoId: 'jkl012', status: 'complete'},
+          {action: 'mark', todoId: 'mno345', status: 'complete'},
+          {action: 'mark', todoId: 'pqr678', status: 'complete'},
+          {action: 'mark', todoId: 'stu901', status: 'complete'}
+        ]"
         Example: "request: 'buy groceries today', action: 'add', text: 'buy groceries', emoji: '🛒', targetDate: '${todayStr}'"
         Example: "request: 'buy groceries tomorrow', action: 'add', text: 'buy groceries', emoji: '🛒', targetDate: '${tomorrowStr}'"
 
